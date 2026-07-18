@@ -1,0 +1,24 @@
+/* ==========================================
+   RESPONSIVE DESIGN BREAKPOINTS
+========================================== */
+@media (max-width: 1200px) {
+    .hero-container { grid-template-columns: 1fr; gap: 40px; }
+    .camera-card-wrapper { max-width: 600px; margin: 0 auto; width: 100%; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .filter-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .dashboard-wrapper { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; padding: 20px; border-right: none; border-bottom: 1px solid var(--border); position: relative; }
+    .metrics-grid { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .hero-left h1 { font-size: 40px; }
+    .filter-grid { grid-template-columns: 1fr; }
+    .toast.show { right: 5%; width: 90%; justify-content: center; }
+    .table-card { overflow-x: auto; }
+    table { min-width: 600px; }
+}

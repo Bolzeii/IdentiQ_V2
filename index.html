@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IdentiQ | Biometric Terminal Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: #0c0d12;
+            --panel-surface: #161822;
+            --border-line: #242838;
+            --text-title: #ffffff;
+            --text-sub: #828ba2;
+            --accent-color: #3b82f6;
+            --system-green: #10b981;
+            --doodle-opacity: 0.55; 
+            --line-color: rgba(255, 255, 255, 0.05);
+        }
+        [data-theme="light"] {
+            --bg-main: #f4f6fa;
+            --panel-surface: #ffffff;
+            --border-line: #e2e8f0;
+            --text-title: #0f172a;
+            --text-sub: #64748b;
+            --accent-color: #2563eb;
+            --system-green: #16a34a;
+            --doodle-opacity: 0.7;
+            --line-color: rgba(15, 23, 42, 0.07);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        body { 
+            background: var(--bg-main); 
+            color: var(--text-title); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden;
+            position: relative;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        #doodleCanvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        .console-container {
+            z-index: 10;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            pointer-events: none;
+            animation: consoleEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-card { 
+            background: var(--panel-surface); 
+            border: 1px solid var(--border-line); 
+            border-radius: 20px; 
+            padding: 40px; 
+            width: 100%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4); 
+            position: relative;
+            pointer-events: auto;
+        }
+
+        .btn-premium { 
+            background: var(--text-title); 
+            color: var(--bg-main); 
+            border: none; 
+            padding: 14px 28px; 
+            font-weight: 700; 
+            font-size: 14px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            width: 100%; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s ease; 
+        }
+        .btn-premium:hover { opacity: 0.95; transform: translateY(-1px); }
+
+        .theme-switch-btn { 
+            position: fixed; top: 24px; right: 24px; 
+            background: var(--panel-surface); border: 1px solid var(--border-line); 
+            color: var(--text-title); width: 42px; height: 42px; border-radius: 50%; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            font-size: 14px; z-index: 1000; 
+        }
+
+        @keyframes scanLine { 0%, 100% { top: 0; } 50% { top: 100%; } }
+        @keyframes consoleEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <canvas id="doodleCanvas"></canvas>
+
+    <button class="theme-switch-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+    
+    <div class="console-container">
+        <div>
+            <h1 style="font-weight: 800; font-size: 36px; letter-spacing: -1.5px; margin-bottom: 6px;">IdentiQ <span style="font-weight: 400; color: var(--accent-color);">Portal</span></h1>
+            <p style="color: var(--text-sub); font-size: 15px; font-weight: 600; max-width: 400px; margin: 0 auto; line-height: 1.4;">Deep-learning based computer vision terminal to securely log and analyze system attendance records.</p>
+        </div>
+
+        <div class="glass-card">
+            <h2 style="font-weight: 800; font-size: 20px; margin-bottom: 4px;">Biometric Terminal</h2>
+            <p style="color: var(--text-sub); font-size: 13px; margin-bottom: 25px; font-weight: 500;">Face Authentication Scan Node</p>
+            
+            <div style="width: 100%; height: 285px; border-radius: 14px; overflow: hidden; position: relative; border: 1px solid var(--border-line); margin-bottom: 24px; background: #000;">
+                <video id="video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
+                <div style="position:absolute; bottom:0; left:0; width:100%; height:2px; background:var(--accent-color); box-shadow: 0 0 14px var(--accent-color); animation: scanLine 3s infinite ease-in-out;"></div>
+            </div>
+            
+            <button id="capBtn" class="btn-premium"><i class="fa-solid fa-expand"></i> Verify Identity</button>
+
+            <div id="matrix" style="display: none; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-line); text-align: left;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div><small style="color:var(--text-sub); font-size:10px; font-weight:800; text-transform:uppercase;">Identity</small><span id="mUser" style="font-weight:700; display:block; margin-top:2px; font-size:14px;">--</span></div>
+                    <div><small style="color:var(--text-sub); font-size:10px; font-weight:800; text-transform:uppercase;">Timestamp</small><span id="mTime" style="font-weight:700; display:block; margin-top:2px; font-size:14px;">--</span></div>
+                    <div><small style="color:var(--text-sub); font-size:10px; font-weight:800; text-transform:uppercase;">Status Mapping</small><span id="mStatus" style="font-weight:800; display:block; margin-top:2px; color:var(--system-green); font-size:14px;">--</span></div>
+                    <div><small style="color:var(--text-sub); font-size:10px; font-weight:800; text-transform:uppercase;">Accuracy Rate</small><span id="mConf" style="font-weight:700; display:block; margin-top:2px; font-size:14px;">--</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        const canvasElement = document.getElementById('doodleCanvas');
+        const ctx = canvasElement.getContext('2d');
+        let doodles = [];
+        const doodleCount = 38; 
+        const linkDistance = 150; 
+
+        let mouse = { x: null, y: null, radius: 195 };
+        let rotationGlobal = 0; 
+
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        const colorPalette = ['#06b6d4', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#3b82f6'];
+
+        const drawProtocols = {
+            camera: (ctx, size) => {
+                ctx.strokeRect(-size/2, -size/3, size, size*0.7);
+                ctx.strokeRect(-size/5, -size/3 - 4, size/2.5, 4);
+                ctx.beginPath(); ctx.arc(0, 0, size/4, 0, Math.PI * 2); ctx.stroke();
+            },
+            microchip: (ctx, size) => {
+                ctx.strokeRect(-size/2.5, -size/2.5, size*0.8, size*0.8);
+                ctx.strokeRect(-size/4, -size/4, size/2, size/4);
+                ctx.moveTo(-size/2, -4); ctx.lineTo(-size/2.5, -4);
+                ctx.moveTo(size/2, 4); ctx.lineTo(size/2.5, 4);
+                ctx.stroke();
+            },
+            cloud: (ctx, size) => {
+                ctx.beginPath(); ctx.moveTo(-size/3, size/4);
+                ctx.arc(-size/3, 0, size/4, Math.PI*0.5, Math.PI*1.5);
+                ctx.arc(-size/12, -size/4, size/3, Math.PI, Math.PI*1.8);
+                ctx.arc(size/4, -size/12, size/4, Math.PI*1.3, Math.PI*2);
+                ctx.arc(size/3, size/4, size/4, Math.PI*1.7, Math.PI*0.5);
+                ctx.closePath(); ctx.stroke();
+            },
+            server: (ctx, size) => {
+                ctx.strokeRect(-size/3, -size/2, size*0.6, size);
+                ctx.strokeRect(-size/4, -size/2 + 4, size/2, size/5);
+                ctx.strokeRect(-size/4, size/3.5, size/2, size/5);
+            },
+            codeWindow: (ctx, size) => {
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                ctx.moveTo(-size/2, -size/4); ctx.lineTo(size/2, -size/4);
+                ctx.moveTo(-size/3, 0); ctx.lineTo(size/4, 0);
+                ctx.stroke();
+            },
+            router: (ctx, size) => {
+                ctx.strokeRect(-size/2, 0, size, size/3);
+                ctx.moveTo(-size/4, 0); ctx.lineTo(-size/4, -size/3);
+                ctx.moveTo(size/4, 0); ctx.lineTo(size/4, -size/3);
+                ctx.stroke();
+            },
+            satellite: (ctx, size) => {
+                ctx.beginPath(); ctx.arc(0, size/4, size/2, Math.PI, 0); ctx.stroke();
+                ctx.moveTo(0, size/4); ctx.lineTo(0, -size/4); ctx.stroke();
+            },
+            gamepad: (ctx, size) => {
+                ctx.beginPath(); ctx.roundRect(-size/2, -size/3, size, size*0.6, 6); ctx.stroke();
+                ctx.beginPath(); ctx.arc(-size/4, 0, 3, 0, Math.PI*2); ctx.fill();
+            },
+            headphones: (ctx, size) => {
+                ctx.beginPath(); ctx.arc(0, 0, size/2, Math.PI, 0); ctx.stroke();
+                ctx.strokeRect(-size/2 - 2, -2, 4, size/3);
+                ctx.strokeRect(size/2 - 2, -2, 4, size/3);
+            },
+            mouse: (ctx, size) => {
+                ctx.beginPath(); ctx.roundRect(-size/4, -size/2, size/2, size, 10); ctx.stroke();
+                ctx.moveTo(0, -size/2); ctx.lineTo(0, 0); ctx.stroke();
+            },
+            phone: (ctx, size) => {
+                ctx.strokeRect(-size/3, -size/2, size*0.6, size);
+                ctx.beginPath(); ctx.arc(0, size/2 - 4, 2, 0, Math.PI*2); ctx.fill();
+            },
+            coolingFan: (ctx, size) => {
+                ctx.save(); ctx.rotate(rotationGlobal * 1.5);
+                ctx.beginPath(); ctx.arc(0, 0, size/4, 0, Math.PI*2); ctx.stroke();
+                for (let i = 0; i < 4; i++) {
+                    ctx.rotate(Math.PI / 2);
+                    ctx.beginPath(); ctx.ellipse(0, -size/3, size/8, size/4, 0, 0, Math.PI*2); ctx.stroke();
+                }
+                ctx.restore();
+            },
+            dataStack: (ctx, size) => {
+                ctx.strokeRect(-size/2, -size/2, size, size/4);
+                ctx.strokeRect(-size/2, -size/8, size, size/4);
+                ctx.strokeRect(-size/2, size/4, size, size/4);
+                ctx.stroke();
+            },
+            usbPlug: (ctx, size) => {
+                ctx.strokeRect(-size/4, -size/4, size/2, size/2);
+                ctx.strokeRect(-size/6, -size/2, size/3, size/4);
+                ctx.moveTo(0, size/4); ctx.lineTo(0, size/2);
+                ctx.stroke();
+            },
+            folderNode: (ctx, size) => {
+                ctx.beginPath(); ctx.moveTo(-size/2, size/3); ctx.lineTo(-size/2, -size/3); ctx.lineTo(-size/4, -size/3); ctx.lineTo(-size/6, -size/2); ctx.lineTo(size/2, -size/2); ctx.lineTo(size/2, size/3);
+                ctx.closePath(); ctx.stroke();
+            },
+            // ✨ NEW UNIQUE ELEMENT: Identity Fingerprint Scanner Ridge Map
+            fingerprint: (ctx, size) => {
+                for (let i = 1; i <= 4; i++) {
+                    ctx.beginPath();
+                    ctx.arc(0, size/2, (size/4) * i, Math.PI * 1.1, Math.PI * 1.9);
+                    ctx.stroke();
+                }
+                ctx.moveTo(0, -size/4); ctx.lineTo(0, size/3); ctx.stroke();
+            },
+            // ✨ NEW UNIQUE ELEMENT: Decentralized Blockchain Secure Link Node
+            blockchain: (ctx, size) => {
+                ctx.strokeRect(-size/2, -size/2, size/3, size/3);
+                ctx.strokeRect(size/6, size/6, size/3, size/3);
+                ctx.moveTo(-size/3, -size/6); ctx.lineTo(size/6, size/3);
+                ctx.strokeRect(-size/6, -size/6, size/3, size/3);
+                ctx.stroke();
+            },
+            // ✨ NEW UNIQUE ELEMENT: CLI Command Terminal Prompt Output
+            terminal: (ctx, size) => {
+                ctx.moveTo(-size/2, -size/3); ctx.lineTo(-size/4, 0); ctx.lineTo(-size/2, size/3);
+                ctx.moveTo(-size/6, size/3); ctx.lineTo(size/3, size/3);
+                ctx.stroke();
+            },
+            // ✨ NEW UNIQUE ELEMENT: Architecture Flowchart Decision Diamond
+            flowchart: (ctx, size) => {
+                ctx.beginPath();
+                ctx.moveTo(0, -size/2); ctx.lineTo(size/2, 0); ctx.lineTo(0, size/2); ctx.lineTo(-size/2, 0);
+                ctx.closePath(); ctx.stroke();
+                ctx.moveTo(-size/2, 0); ctx.lineTo(-size/2 - 6, 0);
+                ctx.moveTo(size/2, 0); ctx.lineTo(size/2 + 6, 0);
+                ctx.stroke();
+            }
+        };
+
+        const doodleKeys = Object.keys(drawProtocols);
+
+        function initResize() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', initResize);
+        initResize();
+
+        for(let i=0; i<doodleCount; i++) {
+            doodles.push({
+                x: Math.random() * canvasElement.width,
+                y: Math.random() * canvasElement.height,
+                speedX: (Math.random() - 0.5) * 0.38,
+                speedY: (Math.random() - 0.5) * 0.38,
+                type: doodleKeys[Math.floor(Math.random() * doodleKeys.length)],
+                size: Math.floor(Math.random() * 8) + 24,
+                color: colorPalette[Math.floor(Math.random() * colorPalette.length)]
+            });
+        }
+
+        function renderDynamicDoodles() {
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            rotationGlobal += 0.01; 
+            
+            const baseOpacity = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--doodle-opacity'));
+            const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line-color');
+
+            for (let i = 0; i < doodles.length; i++) {
+                for (let j = i + 1; j < doodles.length; j++) {
+                    let dist = Math.hypot(doodles[i].x - doodles[j].x, doodles[i].y - doodles[j].y);
+                    if (dist < linkDistance) {
+                        ctx.save();
+                        ctx.strokeStyle = lineColor;
+                        ctx.globalAlpha = (1 - dist / linkDistance) * 0.32;
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(doodles[i].x, doodles[i].y);
+                        ctx.lineTo(doodles[j].x, doodles[j].y);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            doodles.forEach(d => {
+                d.x += d.speedX; d.y += d.speedY;
+
+                if(d.x < -60) d.x = canvasElement.width + 60;
+                if(d.x > canvasElement.width + 60) d.x = -60;
+                if(d.y < -60) d.y = canvasElement.height + 60;
+                if(d.y > canvasElement.height + 60) d.y = -60;
+
+                let opacity = baseOpacity;
+                let isTargeted = false;
+
+                if (mouse.x !== null && mouse.y !== null) {
+                    let dx = mouse.x - d.x;
+                    let dy = mouse.y - d.y;
+                    let distance = Math.hypot(dx, dy);
+
+                    if (distance < mouse.radius) {
+                        isTargeted = true;
+                        opacity = baseOpacity + (1 - distance / mouse.radius) * 0.48;
+                        
+                        ctx.save();
+                        ctx.strokeStyle = d.color;
+                        ctx.globalAlpha = (1 - distance / mouse.radius) * 0.28;
+                        ctx.lineWidth = 1.2;
+                        ctx.beginPath();
+                        ctx.moveTo(d.x, d.y);
+                        ctx.lineTo(mouse.x, mouse.y);
+                        ctx.stroke();
+                        ctx.restore();
+
+                        let force = (mouse.radius - distance) / mouse.radius;
+                        d.x -= (dx / distance) * force * 1.5;
+                        d.y -= (dy / distance) * force * 1.5;
+                    }
+                }
+
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.lineWidth = 1.8; 
+                ctx.strokeStyle = d.color;
+                ctx.fillStyle = d.color;
+                ctx.globalAlpha = opacity;
+                
+                if (isTargeted) {
+                    ctx.shadowColor = d.color;
+                    ctx.shadowBlur = 14; 
+                }
+
+                drawProtocols[d.type](ctx, d.size);
+                ctx.restore();
+            });
+
+            requestAnimationFrame(renderDynamicDoodles);
+        }
+        renderDynamicDoodles();
+
+        const video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({ video: true }).then(s => video.srcObject = s);
+
+        const tBtn = document.getElementById('themeToggle');
+        function applyTheme() {
+            const current = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', current);
+            tBtn.innerHTML = current === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        }
+        tBtn.addEventListener('click', () => {
+            localStorage.setItem('theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+            applyTheme();
+        });
+        applyTheme();
+
+        document.getElementById('capBtn').addEventListener('click', async () => {
+    const canvas = document.getElementById('canvas');
+    const matrixContainer = document.getElementById('matrix');
+    
+    canvas.width = video.videoWidth; 
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    canvas.toBlob(async (blob) => {
+        const fd = new FormData(); 
+        fd.append("file", blob, "verify.jpg");
+        
+        try {
+            const res = await fetch('/api/capture', { method: 'POST', body: fd });
+            
+            // 🚨 1. Handle Unregistered / Missing Identity Exceptions (404)
+            if (res.status === 404) {
+                document.getElementById('mUser').textContent = "❌ Unknown Identity";
+                document.getElementById('mUser').style.color = "var(--red)";
+                document.getElementById('mTime').textContent = new Date().toLocaleTimeString();
+                
+                const statusElement = document.getElementById('mStatus');
+                statusElement.textContent = "ACCESS DENIED";
+                statusElement.style.color = "var(--red)";
+                
+                document.getElementById('mConf').textContent = "0.0%";
+                matrixContainer.style.display = 'block';
+                return;
+            }
+
+            // 🚨 2. Catch generic server faults safely
+            if (!res.ok) {
+                const errData = await res.json();
+                alert(`System Alert: ${errData.detail || "Authentication pipeline failed."}`);
+                return;
+            }
+            
+            // 🟢 3. Successful Biometric Profile Verification Pass
+            const d = await res.json();
+            
+            const userElement = document.getElementById('mUser');
+            userElement.textContent = d.employee;
+            userElement.style.color = "var(--text-title)"; // Reset to theme default
+            
+            document.getElementById('mTime').textContent = d.time;
+            
+            const statusElement = document.getElementById('mStatus');
+            statusElement.textContent = d.status;
+            statusElement.style.color = d.status.includes("Out") ? "var(--orange)" : "var(--system-green)";
+            
+            document.getElementById('mConf').textContent = d.confidence;
+            matrixContainer.style.display = 'block';
+            
+        } catch (error) {
+            console.error("Biometric link interface down:", error);
+        }
+    }, 'image/jpeg');
+});
+    </script>
+</body>
+</html>

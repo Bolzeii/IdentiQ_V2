@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IdentiQ | Leave Dispensation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root { --bg: #0c0d12; --panel: #161822; --border: #242838; --txt: #f8fafc; --sub: #828ba2; --accent: #3b82f6; --green: #10b981; --hud-opacity: 0.03; }
+        [data-theme="light"] { --bg: #f4f6fa; --panel: #ffffff; --border: #e2e8f0; --txt: #0f172a; --sub: #64748b; --accent: #2563eb; --green: #16a34a; --hud-opacity: 0.05; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        body { 
+            background: var(--bg); color: var(--txt); display: flex; min-height: 100vh; 
+            background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px; position: relative;
+        }
+        body::before { content: "[ SUPPORT // LEAVES_REQS ]"; position: absolute; font-family: monospace; font-size: 10px; color: var(--txt); bottom: 20px; right: 20px; opacity: var(--hud-opacity); font-weight: 700; }
+        
+        aside { width: 260px; background: var(--panel); border-right: 1px solid var(--border); padding: 40px 24px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; z-index: 10; }
+        main { flex: 1; padding: 40px; overflow-y: auto; z-index: 5; position: relative; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .input-min { width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 8px; color: var(--txt); outline: none; font-size: 14px; display: block; }
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px; color: var(--sub); text-decoration: none; font-weight: 700; border-radius: 8px; margin-bottom: 6px; }
+        .nav-link.active, .nav-link:hover { color: var(--txt); background: rgba(255,255,255,0.04); }
+        .sub-section-title { font-size: 11px; text-transform: uppercase; color: var(--sub); font-weight: 800; margin: 24px 0 10px 0; letter-spacing: 0.5px; }
+        .theme-switch-btn { position: fixed; top: 24px; right: 24px; background: var(--panel); border: 1px solid var(--border); color: var(--txt); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; z-index: 1000; }
+        .btn-premium { background: var(--txt); color: var(--bg); border: none; padding: 10px 20px; font-weight: 700; font-size: 14px; border-radius: 8px; cursor: pointer; }
+        .ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+    <button class="theme-switch-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+    <aside>
+        <div>
+            <h2 style="font-weight: 800; font-size: 22px; margin-bottom: 30px; letter-spacing: -1px;">IdentiQ <span style="font-weight:400; color:var(--accent);">Admin</span></h2>
+            <nav>
+                <div class="sub-section-title" style="margin-top:0;">Core Logs</div>
+                <a href="/admin" class="nav-link"><i class="fa-solid fa-chart-simple"></i> Logs Dashboard</a>
+                <a href="/register" class="nav-link"><i class="fa-solid fa-user-plus"></i> Register Profile</a>
+                
+                <div class="sub-section-title">Support Desk</div>
+                <a href="/admin/leaves" class="nav-link active"><i class="fa-solid fa-envelope-open-text"></i> Leave Dispensation</a>
+                <a href="/admin/resolutions" class="nav-link"><i class="fa-solid fa-square-check"></i> Inbound Requests</a>
+            </nav>
+        </div>
+    </aside>
+    <main>
+        <h2 style="font-weight: 800; font-size: 26px; margin-bottom: 6px;">Leave Dispensation Updates</h2>
+        <p style="color: var(--sub); font-size: 14px; margin-bottom: 30px;">Review and process incoming employee time-off documentation</p>
+        <div class="ticket-grid" id="leavesWrapper"></div>
+    </main>
+
+    <script>
+        const tBtn = document.getElementById('themeToggle');
+        function applyTheme() {
+            const current = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', current);
+            tBtn.innerHTML = current === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        }
+        tBtn.addEventListener('click', () => {
+            localStorage.setItem('theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+            applyTheme();
+        });
+        applyTheme();
+
+        async function sendReply(ticketId) {
+            const replyText = document.getElementById(`reply-${ticketId}`).value.trim();
+            if(!replyText) return;
+            const fd = new FormData();
+            fd.append("ticket_id", ticketId);
+            fd.append("reply_text", replyText);
+            const res = await fetch('/api/admin/reply', { method: 'POST', body: fd });
+            if(res.ok) { alert("Reply dispatched."); loadLeaves(); }
+        }
+
+        async function loadLeaves() {
+            const res = await fetch('/api/metrics');
+            if(!res.ok) return;
+            const d = await res.json();
+            document.getElementById('leavesWrapper').innerHTML = d.leaves.map(l => `
+                <div class="card" style="border-left: 4px solid var(--accent); margin:0;">
+                    <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--sub);"><span>${l.id}</span><span>${l.timestamp}</span></div>
+                    <h4 style="margin:6px 0; font-size:16px;">${l.subject}</h4>
+                    <p style="font-size:13px; color:var(--sub); margin-bottom:12px;">${l.issue}</p>
+                    <div style="font-size:12px; margin-bottom:6px;">From: <b>${l.employee}</b></div>
+                    <div style="font-size:13px; color:var(--green); font-weight:600; margin-bottom:12px;">Current Reply: ${l.reply}</div>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="reply-${l.id}" placeholder="Write reply context..." class="input-min" style="margin:0;">
+                        <button onclick="sendReply('${l.id}')" class="btn-premium">Send</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        window.onload = loadLeaves;
+    </script>
+</body>
+</html>

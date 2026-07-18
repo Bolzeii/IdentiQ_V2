@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>IdentiQ | Identity Desk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #040508; --glass: rgba(15, 16, 26, 0.8); --border: rgba(255,255,255,0.06); }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color:#fff; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        .card { background: var(--glass); border:1px solid var(--border); border-radius:20px; padding:40px; width:380px; backdrop-filter:blur(20px); box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+        input { width:100%; padding:14px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; color:#fff; margin-bottom:16px; outline:none; font-size:14px; }
+        input:focus { border-color:#2563eb; }
+        button { width:100%; padding:14px; background:#fff; color:#000; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; transition:0.2s; }
+        button:hover { background:#e5e5e5; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="font-weight:800; font-size:24px; margin-bottom:4px; letter-spacing:-0.5px;">IdentiQ Desk</h2>
+        <p style="color:#666; font-size:13px; margin-bottom:24px;">Enter your workspace registered name</p>
+        <form id="lForm">
+            <input type="text" name="username" placeholder="Registered Name (e.g., Balaji)" required>
+            <button type="submit">Sign In to Dashboard</button>
+        </form>
+    </div>
+    <script>
+        document.getElementById('lForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/employee/login', { method: 'POST', body: new FormData(e.target) });
+            if(res.ok) {
+                const d = await res.json();
+                localStorage.setItem('id_token', d.employee_id);
+                localStorage.setItem('id_name', d.name);
+                window.location.href = '/employee/dashboard';
+            } else { alert("Identity verification token rejected by cloud registry."); }
+        });
+    </script>
+</body>
+</html>
