@@ -10,7 +10,11 @@ import boto3
 
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-# Clean root paths just like day one
+# --- Normalized Direct Path Resolution Matrix ---
+# Explicitly targets the 'Templates_html' folder visible in your VS Code workspace
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "Templates_html")
+
 os.makedirs("css", exist_ok=True)
 os.makedirs("js", exist_ok=True)
 app.mount("/css", StaticFiles(directory="css"), name="css")
@@ -38,26 +42,32 @@ except Exception:
 
 # --- Secure Operational Layout Mappings ---
 @app.get("/")
-def common_portal(): return FileResponse("index.html")
+def common_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "index.html"))
 
 @app.get("/admin")
-def admin_portal(): return FileResponse("admin.html")
+def admin_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin.html"))
 
 @app.get("/register")
-def register_portal(): return FileResponse("register.html")
+def register_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "register.html"))
 
 @app.get("/admin/leaves")
-def admin_leaves_page(): return FileResponse("admin_leaves.html")
+def admin_leaves_page(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_leaves.html"))
 
 @app.get("/admin/resolutions")
-def admin_resolutions_page(): return FileResponse("admin_resolutions.html")
+def admin_resolutions_page(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_resolutions.html"))
 
 @app.get("/employee/login")
-def employee_login(): return FileResponse("employee_login.html")
+def employee_login(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_login.html"))
 
 @app.get("/employee/dashboard")
-def employee_dashboard(): return FileResponse("employee_dashboard.html")
-
+def employee_dashboard(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_dashboard.html"))
 
 @app.post("/api/employee/login")
 def api_employee_login(username: str = Form(...)):
