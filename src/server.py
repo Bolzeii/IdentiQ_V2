@@ -10,21 +10,13 @@ import boto3
 
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-# --- Dynamic Environment-Aware Path Resolution Matrix ---
+# --- Normalized Direct Path Resolution Matrix ---
+# Anchors all static assets and viewports precisely adjacent to the execution engine
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Check if running in Render's root directory style or local fallback structures
-if os.path.exists("/opt/render/project/src/templates"):
-    ROOT_DIR = "/opt/render/project/src"
-elif os.path.exists(os.path.join(os.path.dirname(BASE_DIR), "templates")):
-    ROOT_DIR = os.path.dirname(BASE_DIR)
-else:
-    ROOT_DIR = BASE_DIR
-
-# Map directories cleanly from the resolved root directory context
-TEMPLATES_DIR = os.path.join(ROOT_DIR, "templates")
-CSS_DIR = os.path.join(ROOT_DIR, "css")
-JS_DIR = os.path.join(ROOT_DIR, "js")
+TEMPLATES_DIR = os.path.normpath(os.path.join(BASE_DIR, "templates"))
+CSS_DIR = os.path.normpath(os.path.join(BASE_DIR, "css"))
+JS_DIR = os.path.normpath(os.path.join(BASE_DIR, "js"))
 
 os.makedirs(CSS_DIR, exist_ok=True)
 os.makedirs(JS_DIR, exist_ok=True)
