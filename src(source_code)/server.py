@@ -10,10 +10,19 @@ import boto3
 
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-os.makedirs("css", exist_ok=True)
-os.makedirs("js", exist_ok=True)
-app.mount("/css", StaticFiles(directory="css"), name="css")
-app.mount("/js", StaticFiles(directory="js"), name="js")
+# --- Dynamic Path Resolution Matrix ---
+# Finds the exact folder where server.py lives, ensuring zero path collisions on Render
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+# Mount Static assets relative to server.py execution path
+CSS_DIR = os.path.join(BASE_DIR, "css")
+JS_DIR = os.path.join(BASE_DIR, "js")
+os.makedirs(CSS_DIR, exist_ok=True)
+os.makedirs(JS_DIR, exist_ok=True)
+
+app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")
+app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
 
 BUCKET_NAME = "smart-face-attendance-balaji-01"
 REGION = "ap-south-1"
@@ -32,31 +41,37 @@ except Exception:
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
     attendance_table = dynamodb.Table("Attendance")
     employee_table = dynamodb.Table("Employees")
-    tickets_table = dynamodb.Table("IdentiQTickets")  # ⚡ Integrated AWS Tickets Table
+    tickets_table = dynamodb.Table("IdentiQTickets")  
     COLLECTION_ID = "employees"
 
+# --- Secure Operational Layout Mappings ---
 @app.get("/")
-def common_portal(): return FileResponse("index.html")
+def common_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "index.html"))
 
 @app.get("/admin")
-def admin_portal(): return FileResponse("admin.html")
+def admin_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin.html"))
 
 @app.get("/register")
-def register_portal(): return FileResponse("register.html")
+def register_portal(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "register.html"))
 
 @app.get("/admin/leaves")
 def admin_leaves_page():
-    return FileResponse("admin_leaves.html")
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_leaves.html"))
 
 @app.get("/admin/resolutions")
 def admin_resolutions_page():
-    return FileResponse("admin_resolutions.html")
+    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_resolutions.html"))
 
 @app.get("/employee/login")
-def employee_login(): return FileResponse("employee_login.html")
+def employee_login(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_login.html"))
 
 @app.get("/employee/dashboard")
-def employee_dashboard(): return FileResponse("employee_dashboard.html")
+def employee_dashboard(): 
+    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_dashboard.html"))
 
 @app.post("/api/employee/login")
 def api_employee_login(username: str = Form(...)):
@@ -70,23 +85,17 @@ def api_employee_login(username: str = Form(...)):
 def get_system_metrics():
     att_resp = attendance_table.scan()
     emp_resp = employee_table.scan()
-    tick_resp = tickets_table.scan()  # ⚡ Fetch dynamic ticket entries directly from AWS
+    tick_resp = tickets_table.scan()  
     
     items = att_resp.get("Items", [])
     employees = emp_resp.get("Items", [])
     tickets = tick_resp.get("Items", [])
     
     today = datetime.now().strftime("%Y-%m-%d")
-    
-    # 1. Map registered employee IDs to their real names
     emp_mapping = {e['employee_id']: e.get('name', e['employee_id']) for e in employees}
-    
-    # 2. Only pull attendance logs for IDs that ACTUALLY exist in the Employees table
     valid_items = [i for i in items if i.get("employee_id") in emp_mapping]
-    
     present_today = {i['employee_id'] for i in valid_items if i.get('date') == today}
     
-    # 3. Compile the logs stream using verified names only
     logs = [{
         "employee": emp_mapping[i["employee_id"]], 
         "date": i.get("date", ""), 
@@ -95,7 +104,6 @@ def get_system_metrics():
         "status": i.get("status", "Present")
     } for i in valid_items]
     
-    # 4. Sort cloud tickets dynamically by category types
     leaves = [t for t in tickets if t.get("ticket_type") == "leave"]
     resolutions = [t for t in tickets if t.get("ticket_type") == "resolution"]
     
@@ -109,10 +117,8 @@ def get_system_metrics():
 
 @app.get("/api/employee/tickets/{employee_name}")
 def get_employee_tickets(employee_name: str):
-    # Pull fresh tickets directly from cloud state to filter context for the user workspace
     tick_resp = tickets_table.scan()
     tickets = tick_resp.get("Items", [])
-    
     user_leaves = [t for t in tickets if t.get("ticket_type") == "leave" and t.get("employee", "").lower() == employee_name.lower()]
     user_res = [t for t in tickets if t.get("ticket_type") == "resolution" and t.get("employee", "").lower() == employee_name.lower()]
     return {"leaves": user_leaves, "resolutions": user_res}
@@ -120,7 +126,6 @@ def get_employee_tickets(employee_name: str):
 @app.post("/api/employee/submit-ticket")
 def api_submit_ticket(ticket_type: str = Form(...), employee_name: str = Form(...), subject: str = Form(...), issue: str = Form(...)):
     ticket_id = f"{'LV' if ticket_type == 'leave' else 'RES'}-{uuid.uuid4().hex[:3].upper()}"
-    
     payload = {
         "id": ticket_id, 
         "ticket_type": ticket_type,
@@ -130,15 +135,12 @@ def api_submit_ticket(ticket_type: str = Form(...), employee_name: str = Form(..
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"), 
         "reply": "--"
     }
-    
-    # ⚡ Lock persistent item details straight to AWS DynamoDB
     tickets_table.put_item(Item=payload)
     return {"status": "success", "id": ticket_id}
 
 @app.post("/api/admin/reply")
 def api_admin_reply(ticket_id: str = Form(...), reply_text: str = Form(...)):
     try:
-        # ⚡ Direct expression modification on the cloud node
         tickets_table.update_item(
             Key={"id": ticket_id},
             UpdateExpression="SET reply = :r",
@@ -222,15 +224,12 @@ async def api_register_employee(name: str, file: UploadFile = File(...)):
         )
         
         return {"status": "success", "employee_id": emp_id, "name": name}
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration Matrix Failure: {str(e)}")
-        
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
-# --- Entry Execution block at absolute bottom ---
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
