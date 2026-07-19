@@ -7,9 +7,11 @@ IdentiQ V2 is a secure, enterprise-grade cloud-native application engineered to 
 ## 🌐 Production Application Routings
 
 ### 🚀 Live Deployment Engine (Render URL)
+
 * Main System Interface: [https://identiq-v2.onrender.com](https://identiq-v2.onrender.com)
 
 ### 🔗 End-User Interface Entry Points
+
 * **Biometric Registration Kiosk:** [https://identiq-v2.onrender.com/register](https://identiq-v2.onrender.com/register)
 * **Employee Authentication Portal:** [https://identiq-v2.onrender.com/employee_login](https://identiq-v2.onrender.com/employee_login)
 * **Employee Management Workspace:** [https://identiq-v2.onrender.com/employee_dashboard](https://identiq-v2.onrender.com/employee_dashboard)
@@ -43,15 +45,18 @@ The platform provides two primary user-facing operational layers, designed to ru
 ## 🛠️ Technology Stack & Dependencies
 
 ### Frontend Layout Engine
+
 * **Markup & UI Grid:** Responsive HTML5 structure leveraging the `Plus Jakarta Sans` typography framework.
 * **Iconography Vector Layer:** FontAwesome v6.5.2 CDN engine.
 * **Styling Framework:** Vanilla CSS3 featuring custom adaptive properties (`--bg`, `--panel`, `--border`) for automated hardware light/dark mode preference mapping.
 
 ### Backend Application Layer
+
 * **Runtime Framework:** Python 3.x web server runtime engine (`server.py`).
 * **Package Manifest:** Maintained strictly via automated dependency pip packaging matrices (`requirements.txt`).
 
 ### Cloud Infrastructure Layer (AWS Integration Architecture)
+
 * **Amazon S3 (Simple Storage Service):** Houses compressed binary photographic identity assets uploaded from edge biometric intake matrices.
 * **Amazon DynamoDB:** Key-value NOSQL relational data stream framework storing structural workforce index data profiles, active account indicators, and transactional clock-in logs.
 * **Amazon Rekognition:** Computer vision engine processing face detection vector metrics, face matching analytics, and structure vector identification.
@@ -61,11 +66,14 @@ The platform provides two primary user-facing operational layers, designed to ru
 ## 🚀 Local Installation & Deployment Configuration
 
 ### Prerequisites
+
 * Python 3.8 or higher installed locally.
 * AWS CLI configured with valid deployment IAM credentials.
 
 ### 1. Repository Setup & Virtual Environment Initialization
+
 Clone the repository code assets and instantiate an isolated virtual execution environment container:
+
 ```bash
 # Clone the repository
 git clone [https://github.com/Bolzeii/IdentiQ_V2.git](https://github.com/Bolzeii/IdentiQ_V2.git)
