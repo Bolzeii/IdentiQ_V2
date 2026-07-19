@@ -10,24 +10,11 @@ import boto3
 
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-# --- Standalone Direct Path Resolution Matrix ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Escape the nested repository 'src' container if executing on the Render cloud node
-if os.path.exists("/opt/render/project/src/templates"):
-    ROOT_DIR = "/opt/render/project/src"
-else:
-    ROOT_DIR = BASE_DIR
-
-TEMPLATES_DIR = os.path.normpath(os.path.join(ROOT_DIR, "templates"))
-CSS_DIR = os.path.normpath(os.path.join(ROOT_DIR, "css"))
-JS_DIR = os.path.normpath(os.path.join(ROOT_DIR, "js"))
-
-os.makedirs(CSS_DIR, exist_ok=True)
-os.makedirs(JS_DIR, exist_ok=True)
-
-app.mount("/css", StaticFiles(directory=CSS_DIR), name="css")
-app.mount("/js", StaticFiles(directory=JS_DIR), name="js")
+# Clean root paths just like day one
+os.makedirs("css", exist_ok=True)
+os.makedirs("js", exist_ok=True)
+app.mount("/css", StaticFiles(directory="css"), name="css")
+app.mount("/js", StaticFiles(directory="js"), name="js")
 
 BUCKET_NAME = "smart-face-attendance-balaji-01"
 REGION = "ap-south-1"
@@ -51,32 +38,26 @@ except Exception:
 
 # --- Secure Operational Layout Mappings ---
 @app.get("/")
-def common_portal(): 
-    return FileResponse(os.path.join(TEMPLATES_DIR, "index.html"))
+def common_portal(): return FileResponse("index.html")
 
 @app.get("/admin")
-def admin_portal(): 
-    return FileResponse(os.path.join(TEMPLATES_DIR, "admin.html"))
+def admin_portal(): return FileResponse("admin.html")
 
 @app.get("/register")
-def register_portal(): 
-    return FileResponse(os.path.join(TEMPLATES_DIR, "register.html"))
+def register_portal(): return FileResponse("register.html")
 
 @app.get("/admin/leaves")
-def admin_leaves_page():
-    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_leaves.html"))
+def admin_leaves_page(): return FileResponse("admin_leaves.html")
 
 @app.get("/admin/resolutions")
-def admin_resolutions_page():
-    return FileResponse(os.path.join(TEMPLATES_DIR, "admin_resolutions.html"))
+def admin_resolutions_page(): return FileResponse("admin_resolutions.html")
 
 @app.get("/employee/login")
-def employee_login(): 
-    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_login.html"))
+def employee_login(): return FileResponse("employee_login.html")
 
 @app.get("/employee/dashboard")
-def employee_dashboard(): 
-    return FileResponse(os.path.join(TEMPLATES_DIR, "employee_dashboard.html"))
+def employee_dashboard(): return FileResponse("employee_dashboard.html")
+
 
 @app.post("/api/employee/login")
 def api_employee_login(username: str = Form(...)):
