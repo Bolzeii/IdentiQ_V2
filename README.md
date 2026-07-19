@@ -2,6 +2,18 @@
 
 IdentiQ V2 is a secure, enterprise-grade cloud-native application engineered to manage workforce authentication streams and automated attendance indexing. The architecture utilizes a decoupled frontend schema to isolate edge biometric enrollment terminals from administrative monitoring panels, processing core operations through a scalable server-less engine integrated with Amazon Web Services (AWS).
 
+🚀 **Live Deployment URL:** [https://identiq-v2.onrender.com](https://identiq-v2.onrender.com)
+
+---
+
+## 🏆 Core Innovations (What Makes IdentiQ V2 Special?)
+
+Unlike standard all-in-one management systems, IdentiQ V2 introduces specific architectural enhancements designed for enterprise scaling:
+
+* **Zero-Trust Edge Isolation:** By completely sandboxing the biometric intake kiosk from the main administrative workspace, the system reduces the surface area for cyber threats. Front-line enrollment terminals have no visibility or connection to sensitive administrative endpoints or authorization logs.
+* **Agile Kiosk Viewports:** The user interface features zero-loss responsiveness. Engineered using fluid percentages and responsive CSS media query breakpoints, the intake card scales seamlessly down to mobile phone layouts without clipping or layout collisions, allowing immediate field deployments on standard mobile devices.
+* **Cloud-Native Synergy:** The application relies entirely on scalable AWS serverless services rather than local hardware storage, minimizing maintenance overhead and maximizing biometric validation speeds via computer vision pipelines.
+
 ---
 
 ## 🏗️ Architectural Topology & Decoupling Schema
