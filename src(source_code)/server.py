@@ -12,10 +12,12 @@ app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
 # --- Dynamic Path Resolution Matrix ---
 # Finds the exact folder where server.py lives, ensuring zero path collisions on Render
+# --- Dynamic Path Resolution Matrix ---
+# This resolves to /opt/render/project/src/src(source_code) on Render
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-# Mount Static assets relative to server.py execution path
+# Point directly to the folders right next to server.py
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 CSS_DIR = os.path.join(BASE_DIR, "css")
 JS_DIR = os.path.join(BASE_DIR, "js")
 os.makedirs(CSS_DIR, exist_ok=True)
