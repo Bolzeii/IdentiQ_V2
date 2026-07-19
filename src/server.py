@@ -10,13 +10,18 @@ import boto3
 
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-# --- Normalized Direct Path Resolution Matrix ---
-# Anchors all static assets and viewports precisely adjacent to the execution engine
+# --- Standalone Direct Path Resolution Matrix ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-TEMPLATES_DIR = os.path.normpath(os.path.join(BASE_DIR, "templates"))
-CSS_DIR = os.path.normpath(os.path.join(BASE_DIR, "css"))
-JS_DIR = os.path.normpath(os.path.join(BASE_DIR, "js"))
+# Escape the nested repository 'src' container if executing on the Render cloud node
+if os.path.exists("/opt/render/project/src/templates"):
+    ROOT_DIR = "/opt/render/project/src"
+else:
+    ROOT_DIR = BASE_DIR
+
+TEMPLATES_DIR = os.path.normpath(os.path.join(ROOT_DIR, "templates"))
+CSS_DIR = os.path.normpath(os.path.join(ROOT_DIR, "css"))
+JS_DIR = os.path.normpath(os.path.join(ROOT_DIR, "js"))
 
 os.makedirs(CSS_DIR, exist_ok=True)
 os.makedirs(JS_DIR, exist_ok=True)
