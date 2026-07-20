@@ -32,16 +32,22 @@
 <body>
     <button class="theme-switch-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
 
-    <!-- 🚫 Sidebar <aside> container removed completely from this layout -->
-
     <div class="glass-card">
         <h2 style="margin-bottom: 20px; font-weight: 800; font-size: 22px;">Add New Profile</h2>
         
+        <!-- 🆔 Manual Employee ID Field -->
+        <div style="margin-bottom: 16px;">
+            <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--sub); font-size:13px;">Employee ID</label>
+            <input type="text" id="empId" placeholder="e.g. EMP_101" class="input-premium" style="margin-bottom:0;">
+        </div>
+
+        <!-- 👤 Full Identity Name Field -->
         <div style="margin-bottom: 20px;">
             <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--sub); font-size:13px;">Full Identity Name</label>
             <input type="text" id="empName" placeholder="Enter registration name..." class="input-premium" style="margin-bottom:0;">
         </div>
 
+        <!-- 📹 Camera Snapshot Viewport -->
         <div style="width: 100%; height: 260px; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid var(--border); margin-bottom: 20px; background: #000;">
             <video id="video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover;"></video>
             <canvas id="canvas" style="display:none;"></canvas>
@@ -57,6 +63,7 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const registerBtn = document.getElementById('registerBtn');
+        const empIdInput = document.getElementById('empId');
         const empNameInput = document.getElementById('empName');
         const regStatus = document.getElementById('regStatus');
 
@@ -77,8 +84,12 @@
         applyTheme();
 
         registerBtn.addEventListener('click', async () => {
+            const empId = empIdInput.value.trim();
             const name = empNameInput.value.trim();
+            
+            if (!empId) { alert("Please input an Employee ID (e.g. EMP_101)."); return; }
             if (!name) { alert("Please input name credentials."); return; }
+
             registerBtn.disabled = true;
             regStatus.textContent = "Compiling features registry profile data...";
 
@@ -90,12 +101,27 @@
                 const formData = new FormData();
                 formData.append("file", blob, "register.jpg");
                 try {
-                    const response = await fetch(`/api/register-employee?name=${encodeURIComponent(name)}`, { method: "POST", body: formData });
+                    // Send both employee_id and name as query parameters
+                    const response = await fetch(`/api/register-employee?employee_id=${encodeURIComponent(empId)}&name=${encodeURIComponent(name)}`, { 
+                        method: "POST", 
+                        body: formData 
+                    });
                     const result = await response.json();
-                    if (response.ok) { regStatus.textContent = `🎉 Registered Entry ID: ${result.employee_id}`; empNameInput.value = ""; } 
-                    else { throw new Error(result.detail || "Registration rejected."); }
-                } catch (error) { regStatus.textContent = `❌ Error: ${error.message}`; } 
-                finally { registerBtn.disabled = false; }
+                    
+                    if (response.ok) { 
+                        regStatus.textContent = `🎉 Registered Entry ID: ${result.employee_id || empId}`; 
+                        empIdInput.value = "";
+                        empNameInput.value = ""; 
+                    } 
+                    else { 
+                        throw new Error(result.detail || "Registration rejected."); 
+                    }
+                } catch (error) { 
+                    regStatus.textContent = `❌ Error: ${error.message}`; 
+                } 
+                finally { 
+                    registerBtn.disabled = false; 
+                }
             }, 'image/jpeg');
         });
     </script>

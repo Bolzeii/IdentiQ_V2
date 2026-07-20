@@ -3,15 +3,17 @@ import os
 import csv
 import io
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 import boto3
 
+from backend.register_employee import register_employee_face
+from backend.recognize_face import process_attendance
+
 app = FastAPI(title="IdentiQ Biometric Ecosystem")
 
-# --- Normalized Direct Path Resolution Matrix ---
-# Explicitly targets the 'Templates_html' folder visible in your VS Code workspace
+# --- Normalized Path Resolution ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "Templates_html")
 
@@ -20,27 +22,23 @@ os.makedirs("js", exist_ok=True)
 app.mount("/css", StaticFiles(directory="css"), name="css")
 app.mount("/js", StaticFiles(directory="js"), name="js")
 
-BUCKET_NAME = "smart-face-attendance-balaji-01"
 REGION = "ap-south-1"
 
 try:
     import backend.config as aws_config
-    s3_client = getattr(aws_config, "s3")
-    rekognition = getattr(aws_config, "rekognition")
+    s3_client = getattr(aws_config, "s3", None)
+    rekognition = getattr(aws_config, "rekognition_client", None)
     attendance_table = getattr(aws_config, "attendance_table")
-    employee_table = getattr(aws_config, "employee_table")
+    employee_table = getattr(aws_config, "employees_table")
     tickets_table = getattr(aws_config, "tickets_table", boto3.resource("dynamodb", region_name=REGION).Table("IdentiQTickets"))
-    COLLECTION_ID = getattr(aws_config, "COLLECTION_ID", "employees")
 except Exception:
-    s3_client = boto3.client("s3", region_name=REGION)
-    rekognition = boto3.client("rekognition", region_name=REGION)
     dynamodb = boto3.resource("dynamodb", region_name=REGION)
     attendance_table = dynamodb.Table("Attendance")
     employee_table = dynamodb.Table("Employees")
     tickets_table = dynamodb.Table("IdentiQTickets")  
-    COLLECTION_ID = "employees"
 
-# --- Secure Operational Layout Mappings ---
+# --- Page Navigation Routes ---
+
 @app.get("/")
 def common_portal(): 
     return FileResponse(os.path.join(TEMPLATES_DIR, "index.html"))
@@ -69,10 +67,12 @@ def employee_login():
 def employee_dashboard(): 
     return FileResponse(os.path.join(TEMPLATES_DIR, "employee_dashboard.html"))
 
+# --- Employee Workspace & Tickets API ---
+
 @app.post("/api/employee/login")
 def api_employee_login(username: str = Form(...)):
     resp = employee_table.scan()
-    user_match = next((e for e in resp.get("Items", []) if e['name'].lower() == username.lower() or e['employee_id'] == username), None)
+    user_match = next((e for e in resp.get("Items", []) if e.get('name', '').lower() == username.lower() or e.get('employee_id') == username), None)
     if user_match:
         return {"status": "success", "employee_id": user_match["employee_id"], "name": user_match["name"]}
     raise HTTPException(status_code=401, detail="Identity token not found.")
@@ -93,9 +93,9 @@ def get_system_metrics():
     present_today = {i['employee_id'] for i in valid_items if i.get('date') == today}
     
     logs = [{
-        "employee": emp_mapping[i["employee_id"]], 
+        "employee": emp_mapping.get(i["employee_id"], i["employee_id"]), 
         "date": i.get("date", ""), 
-        "clockIn": i.get("clock_in", "--"), 
+        "clockIn": i.get("clock_in", i.get("time", "--")), 
         "clockOut": i.get("clock_out", "--"), 
         "status": i.get("status", "Present")
     } for i in valid_items]
@@ -160,71 +160,48 @@ def export_csv_report():
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["Employee Name", "Date", "Clock In", "Clock Out", "Status"])
-    for i in items: w.writerow([emp_mapping.get(i.get("employee_id"), i.get("employee_id")), i.get("date",""), i.get("clock_in","--"), i.get("clock_out","--"), i.get("status","Present")])
+    for i in items: 
+        w.writerow([
+            emp_mapping.get(i.get("employee_id"), i.get("employee_id")), 
+            i.get("date",""), 
+            i.get("clock_in", i.get("time", "--")), 
+            i.get("clock_out","--"), 
+            i.get("status","Present")
+        ])
     buf.seek(0)
     return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=IdentiQ_Report.csv"})
 
-@app.post("/api/capture")
-async def process_capture(file: UploadFile = File(...)):
-    temp = f"cap_{uuid.uuid4().hex[:6]}.jpg"
-    try:
-        with open(temp, "wb") as f: f.write(await file.read())
-        s3_client.upload_file(temp, BUCKET_NAME, f"attendance/{temp}")
-        response = rekognition.search_faces_by_image(CollectionId=COLLECTION_ID, Image={"S3Object": {"Bucket": BUCKET_NAME, "Name": f"attendance/{temp}"}}, FaceMatchThreshold=85, MaxFaces=1)
-        if not response["FaceMatches"]: raise HTTPException(status_code=404, detail="Identity unknown.")
-        emp_id = response["FaceMatches"][0]["Face"]["ExternalImageId"]
-        conf = round(response["FaceMatches"][0]["Similarity"], 1)
-        emp_res = employee_table.get_item(Key={"employee_id": emp_id})
-        name = emp_res.get("Item", {}).get("name", emp_id)
-        today = datetime.now().strftime("%Y-%m-%d")
-        now_time = datetime.now().strftime("%H:%M:%S")
-        att_res = attendance_table.scan()
-        existing = next((i for i in att_res.get("Items", []) if i["employee_id"] == emp_id and i["date"] == today), None)
-        if not existing:
-            status = "Late" if datetime.now().hour >= 9 else "Present"
-            attendance_table.put_item(Item={"employee_id": emp_id, "date": today, "clock_in": now_time, "clock_out": "--", "status": status})
-        else:
-            status = "Clocked Out"
-            attendance_table.update_item(Key={"employee_id": emp_id, "date": today}, UpdateExpression="SET clock_out = :t", ExpressionAttributeValues={":t": now_time})
-        return {"employee": name, "time": now_time, "status": status, "confidence": f"{conf}%"}
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if os.path.exists(temp): os.remove(temp)
+# --- Clean Biometric Capture & Registration APIs ---
 
 @app.post("/api/register-employee")
-async def api_register_employee(name: str, file: UploadFile = File(...)):
-    emp_id = f"EMP_{uuid.uuid4().hex[:6].upper()}"
-    temp_filename = f"reg_{uuid.uuid4().hex[:6]}.jpg"
+async def register_endpoint(
+    employee_id: str = Query(None),
+    name: str = Query(...),
+    file: UploadFile = File(...)
+):
+    # If no manual employee_id passed, fallback to generating one
+    if not employee_id:
+        employee_id = f"EMP_{uuid.uuid4().hex[:6].upper()}"
+        
+    image_bytes = await file.read()
+    result = register_employee_face(image_bytes, employee_id, name)
     
-    try:
-        with open(temp_filename, "wb") as buffer:
-            buffer.write(await file.read())
-            
-        s3_key = f"registered-faces/{temp_filename}"
-        s3_client.upload_file(temp_filename, BUCKET_NAME, s3_key)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message"))
         
-        rekognition.index_faces(
-            CollectionId=COLLECTION_ID,
-            Image={"S3Object": {"Bucket": BUCKET_NAME, "Name": s3_key}},
-            ExternalImageId=emp_id,
-            MaxFaces=1,
-            QualityFilter="AUTO"
-        )
+    return result
+
+@app.post("/api/capture")
+async def capture_endpoint(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    result = process_attendance(image_bytes)
+    
+    if result.get("status") == "unauthorized":
+        raise HTTPException(status_code=401, detail=result.get("message"))
+    elif result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message"))
         
-        employee_table.put_item(
-            Item={
-                "employee_id": emp_id,
-                "name": name,
-                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        )
-        
-        return {"status": "success", "employee_id": emp_id, "name": name}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Registration Matrix Failure: {str(e)}")
-    finally:
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
+    return result
 
 if __name__ == "__main__":
     import uvicorn
